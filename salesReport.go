@@ -1,15 +1,15 @@
-package main
+package reporter
 
 import (
 	"compress/gzip"
 	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
+	_ "embed"
 	"encoding/csv"
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -23,7 +23,7 @@ import (
 	"github.com/morishin/appstore-connect-sales-reporter/openapi"
 )
 
-func getSalesReports(accessInfo AppStoreConnectAPIAccessInfo) SalesReports {
+func getSalesReports(accessInfo *AppStoreConnectAPIAccessInfo) SalesReports {
 	dayBeforeYesterday := now.BeginningOfDay().AddDate(0, 0, -2)
 	lastWeek := now.With(dayBeforeYesterday).BeginningOfWeek()
 	lastMonth := now.With(dayBeforeYesterday.AddDate(0, -1, 0)).BeginningOfMonth()
@@ -33,11 +33,13 @@ func getSalesReports(accessInfo AppStoreConnectAPIAccessInfo) SalesReports {
 	lastWeekReportCh := make(chan SalesReport)
 	lastMonthReportCh := make(chan SalesReport)
 	lastYearReportCh := make(chan SalesReport)
+
+	jwtStr := generateJWT(accessInfo)
 	wg := sync.WaitGroup{}
-	go getSalesReport(&accessInfo, dayBeforeYesterday.Format("2006-01-02"), "DAILY", dayBeforeYesterdayReportCh, wg)
-	go getSalesReport(&accessInfo, lastWeek.Format("2006-01-02"), "WEEKLY", lastWeekReportCh, wg)
-	go getSalesReport(&accessInfo, lastMonth.Format("2006-01"), "MONTHLY", lastMonthReportCh, wg)
-	go getSalesReport(&accessInfo, lastYear.Format("2006"), "YEARLY", lastYearReportCh, wg)
+	go getSalesReport(accessInfo.BaseUrl, jwtStr, dayBeforeYesterday.Format("2006-01-02"), "DAILY", dayBeforeYesterdayReportCh, wg)
+	go getSalesReport(accessInfo.BaseUrl, jwtStr, lastWeek.Format("2006-01-02"), "WEEKLY", lastWeekReportCh, wg)
+	go getSalesReport(accessInfo.BaseUrl, jwtStr, lastMonth.Format("2006-01"), "MONTHLY", lastMonthReportCh, wg)
+	go getSalesReport(accessInfo.BaseUrl, jwtStr, lastYear.Format("2006"), "YEARLY", lastYearReportCh, wg)
 	wg.Wait()
 
 	return SalesReports{
@@ -75,9 +77,7 @@ func salesReportsToProceeds(salesReports *SalesReports, currency string) Proceed
 	}
 }
 
-func getSalesReport(accessInfo *AppStoreConnectAPIAccessInfo, reportDate string, frequency string, ch chan SalesReport, wg sync.WaitGroup) {
-	defer wg.Done()
-	wg.Add(1)
+func generateJWT(accessInfo *AppStoreConnectAPIAccessInfo) string {
 	expireTime := time.Now().Add(time.Minute * 10).Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
 		"iss": accessInfo.IssuerId,
@@ -86,19 +86,26 @@ func getSalesReport(accessInfo *AppStoreConnectAPIAccessInfo, reportDate string,
 	})
 	token.Header["kid"] = accessInfo.KeyID
 
-	key, err := getPrivateKey(accessInfo.AuthKeyFile)
+	key, err := readPrivateKey()
 	if err != nil {
 		panic(err)
 	}
-	signedToken, err := token.SignedString(key)
+	jwtStr, err := token.SignedString(key)
 	if err != nil {
 		panic(err)
 	}
-	bearerTokenProvider, bearerTokenProviderErr := securityprovider.NewSecurityProviderBearerToken(signedToken)
+	return jwtStr
+}
+
+func getSalesReport(baseUrl string, jwtStr string, reportDate string, frequency string, ch chan SalesReport, wg sync.WaitGroup) {
+	defer wg.Done()
+	wg.Add(1)
+
+	bearerTokenProvider, bearerTokenProviderErr := securityprovider.NewSecurityProviderBearerToken(jwtStr)
 	if bearerTokenProviderErr != nil {
 		panic(bearerTokenProviderErr)
 	}
-	client, clientErr := openapi.NewClient(accessInfo.BaseUrl, openapi.WithRequestEditorFn(bearerTokenProvider.Intercept))
+	client, clientErr := openapi.NewClient(baseUrl, openapi.WithRequestEditorFn(bearerTokenProvider.Intercept))
 	if clientErr != nil {
 		panic(clientErr)
 	}
@@ -122,17 +129,15 @@ func getSalesReport(accessInfo *AppStoreConnectAPIAccessInfo, reportDate string,
 	ch <- salesReport
 }
 
-// Reads a p8 file and returns the ecdsa private key
-func getPrivateKey(fileP8 string) (*ecdsa.PrivateKey, error) {
-	var fileData []byte
+//go:embed AuthKey.p8
+var authKeyP8 []byte
+
+func readPrivateKey() (*ecdsa.PrivateKey, error) {
 	var err error
-	if fileData, err = ioutil.ReadFile(fileP8); err != nil {
-		return nil, err
-	}
 	var parsedKey interface{}
 	var key *ecdsa.PrivateKey
 	var ok bool
-	block, _ := pem.Decode(fileData)
+	block, _ := pem.Decode(authKeyP8)
 	if parsedKey, err = x509.ParsePKCS8PrivateKey(block.Bytes); err != nil {
 		return nil, err
 	}

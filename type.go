@@ -1,4 +1,4 @@
-package main
+package reporter
 
 type Proceeds struct {
 	DayBeforeYesterday int
@@ -44,8 +44,7 @@ type SalesReportRow struct {
 	OrderType             string `csv:"Order Type"`
 }
 type AppStoreConnectAPIAccessInfo struct {
-	BaseUrl     string
-	AuthKeyFile string
-	IssuerId    string
-	KeyID       string
+	BaseUrl  string
+	IssuerId string
+	KeyID    string
 }
