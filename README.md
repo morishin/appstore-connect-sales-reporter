@@ -2,15 +2,20 @@
 
 ## Setup
 
-Copy .env.example to .env and fill in the values.
+1. Copy .env.example to .env and fill in the values.
 
-```sh
-cp .env.example .env
-```
+    ```sh
+    cp .env.example .env
+    ```
+
+1. Download your own AppStore Connect API key (See https://developer.apple.com/documentation/appstoreconnectapi/creating_api_keys_for_app_store_connect_api#3028598)
+1. Rename it into `AuthKey.p8` and put it next to AuthKey.p8.example.
+
 
 ## Run
 
 ```sh
+$ cd dev
 $ go run .
 ```
 
