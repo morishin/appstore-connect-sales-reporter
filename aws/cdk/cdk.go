@@ -126,5 +126,10 @@ func envForLambdaExecution() *map[string]*string {
 		env[key] = jsii.String(os.Getenv(key))
 	}
 
+	timezone := os.Getenv("TZ")
+	if timezone != "" {
+		env["TZ"] = jsii.String(timezone)
+	}
+
 	return &env
 }

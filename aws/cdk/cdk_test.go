@@ -38,4 +38,5 @@ func setUpEnv(t *testing.T) {
 	t.Setenv("APP_STORE_CONNECT_API_BASE_URL", "https://api.appstoreconnect.apple.com")
 	t.Setenv("SLACK_WEBHOOK_URL", "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX")
 	t.Setenv("CURRENCY", "JPY")
+	t.Setenv("TZ", "Asia/Tokyo")
 }
