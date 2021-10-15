@@ -1,1 +1,4 @@
 .env
+AuthKey.p8
+aws/lambda/main
+aws/cdk/cdk.out
