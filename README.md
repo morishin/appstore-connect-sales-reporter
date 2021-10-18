@@ -1,5 +1,9 @@
 # appstore-connect-sales-reporter
 
+Post App Store Connect Sales Report summary to Slack.
+
+![screenshot](https://user-images.githubusercontent.com/1413408/137770668-a2e9891f-060d-474a-a87a-3b24b4f69bfe.png)
+
 ## Setup
 
 1. Copy .env.example to .env and fill in the values.
