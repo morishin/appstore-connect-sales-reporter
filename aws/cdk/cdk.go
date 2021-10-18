@@ -34,20 +34,21 @@ func NewCdkStack(scope constructs.Construct, id string, props *CdkStackProps) aw
 		panic(err)
 	}
 
-	functionName := jsii.String("appstore-connect-reporter-function")
+	env := envForLambdaExecution()
+	functionName := jsii.String("appstore-connect-sales-reporter-function")
 	function := awslambda.NewFunction(stack, functionName, &awslambda.FunctionProps{
 		FunctionName: functionName,
 		Runtime:      awslambda.Runtime_GO_1_X(),
 		Code:         awslambda.Code_Asset(jsii.String("../lambda")),
 		Architecture: awslambda.Architecture_X86_64(),
 		Handler:      jsii.String("main"),
-		Environment:  envForLambdaExecution(),
+		Environment:  env,
 	})
 
 	target := awseventstargets.NewLambdaFunction(function, &awseventstargets.LambdaFunctionProps{})
 	targets := []awsevents.IRuleTarget{target}
 	awsevents.NewRule(stack, jsii.String("appstore-connect-sales-reporter-rule"), &awsevents.RuleProps{
-		Schedule: awsevents.Schedule_Expression(jsii.String("cron(0 3 * * ? *)")),
+		Schedule: awsevents.Schedule_Expression((*env)["CRON"]),
 		Targets:  &targets,
 	})
 
@@ -57,7 +58,7 @@ func NewCdkStack(scope constructs.Construct, id string, props *CdkStackProps) aw
 func main() {
 	app := awscdk.NewApp(nil)
 
-	NewCdkStack(app, "CdkStack", &CdkStackProps{
+	NewCdkStack(app, "AppStoreConnectSalesReporterStack", &CdkStackProps{
 		awscdk.StackProps{
 			Env: env(),
 		},
@@ -101,6 +102,7 @@ func envForLambdaExecution() *map[string]*string {
 		"APP_STORE_CONNECT_KEY_ID",
 		"SLACK_WEBHOOK_URL",
 		"CURRENCY",
+		"CRON",
 	}
 
 	// Check whether all of the required environment variables are set
