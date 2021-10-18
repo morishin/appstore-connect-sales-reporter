@@ -29,24 +29,37 @@ func getSalesReports(accessInfo *AppStoreConnectAPIAccessInfo) SalesReports {
 	lastMonth := now.With(dayBeforeYesterday.AddDate(0, -1, 0)).BeginningOfMonth()
 	lastYear := now.With(dayBeforeYesterday.AddDate(-1, 0, 0)).BeginningOfYear()
 
-	dayBeforeYesterdayReportCh := make(chan SalesReport)
-	lastWeekReportCh := make(chan SalesReport)
-	lastMonthReportCh := make(chan SalesReport)
-	lastYearReportCh := make(chan SalesReport)
+	var dayBeforeYesterdayReport *SalesReport
+	var lastWeekReport *SalesReport
+	var lastMonthReport *SalesReport
+	var lastYearReport *SalesReport
 
 	jwtStr := generateJWT(accessInfo)
 	wg := sync.WaitGroup{}
-	go getSalesReport(accessInfo.BaseUrl, jwtStr, dayBeforeYesterday.Format("2006-01-02"), "DAILY", dayBeforeYesterdayReportCh, wg)
-	go getSalesReport(accessInfo.BaseUrl, jwtStr, lastWeek.Format("2006-01-02"), "WEEKLY", lastWeekReportCh, wg)
-	go getSalesReport(accessInfo.BaseUrl, jwtStr, lastMonth.Format("2006-01"), "MONTHLY", lastMonthReportCh, wg)
-	go getSalesReport(accessInfo.BaseUrl, jwtStr, lastYear.Format("2006"), "YEARLY", lastYearReportCh, wg)
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		dayBeforeYesterdayReport = getSalesReport(accessInfo.BaseUrl, jwtStr, dayBeforeYesterday.Format("2006-01-02"), "DAILY")
+	}()
+	go func() {
+		defer wg.Done()
+		lastWeekReport = getSalesReport(accessInfo.BaseUrl, jwtStr, lastWeek.Format("2006-01-02"), "WEEKLY")
+	}()
+	go func() {
+		defer wg.Done()
+		lastMonthReport = getSalesReport(accessInfo.BaseUrl, jwtStr, lastMonth.Format("2006-01"), "MONTHLY")
+	}()
+	go func() {
+		defer wg.Done()
+		lastYearReport = getSalesReport(accessInfo.BaseUrl, jwtStr, lastYear.Format("2006"), "YEARLY")
+	}()
 	wg.Wait()
 
 	return SalesReports{
-		DayBeforeYesterday: <-dayBeforeYesterdayReportCh,
-		LastWeek:           <-lastWeekReportCh,
-		LastMonth:          <-lastMonthReportCh,
-		LastYear:           <-lastYearReportCh,
+		DayBeforeYesterday: *dayBeforeYesterdayReport,
+		LastWeek:           *lastWeekReport,
+		LastMonth:          *lastMonthReport,
+		LastYear:           *lastYearReport,
 	}
 }
 
@@ -97,10 +110,7 @@ func generateJWT(accessInfo *AppStoreConnectAPIAccessInfo) string {
 	return jwtStr
 }
 
-func getSalesReport(baseUrl string, jwtStr string, reportDate string, frequency string, ch chan SalesReport, wg sync.WaitGroup) {
-	defer wg.Done()
-	wg.Add(1)
-
+func getSalesReport(baseUrl string, jwtStr string, reportDate string, frequency string) *SalesReport {
 	bearerTokenProvider, bearerTokenProviderErr := securityprovider.NewSecurityProviderBearerToken(jwtStr)
 	if bearerTokenProviderErr != nil {
 		panic(bearerTokenProviderErr)
@@ -124,9 +134,9 @@ func getSalesReport(baseUrl string, jwtStr string, reportDate string, frequency 
 	if resErr != nil {
 		panic(resErr)
 	}
-	salesReport := unmarshalSalesReport(res.Body)
 
-	ch <- salesReport
+	result := unmarshalSalesReport(res.Body)
+	return &result
 }
 
 //go:embed AuthKey.p8
