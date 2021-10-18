@@ -2,15 +2,15 @@ package reporter
 
 type Proceeds struct {
 	DayBeforeYesterday int
-	LastWeek           int
+	ThreeDaysAgo       int
+	ThisMonth          int
 	LastMonth          int
-	LastYear           int
 }
 type SalesReports struct {
 	DayBeforeYesterday SalesReport
-	LastWeek           SalesReport
+	ThreeDaysAgo       SalesReport
+	ThisMonth          SalesReport
 	LastMonth          SalesReport
-	LastYear           SalesReport
 }
 type SalesReport = []*SalesReportRow
 type SalesReportRow struct {

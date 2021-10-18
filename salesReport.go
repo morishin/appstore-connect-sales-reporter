@@ -25,14 +25,14 @@ import (
 
 func getSalesReports(accessInfo *AppStoreConnectAPIAccessInfo) SalesReports {
 	dayBeforeYesterday := now.BeginningOfDay().AddDate(0, 0, -2)
-	lastWeek := now.With(dayBeforeYesterday).BeginningOfWeek()
+	threeDaysAgo := now.BeginningOfDay().AddDate(0, 0, -3)
+	thisMonth := now.BeginningOfYear()
 	lastMonth := now.With(dayBeforeYesterday.AddDate(0, -1, 0)).BeginningOfMonth()
-	lastYear := now.With(dayBeforeYesterday.AddDate(-1, 0, 0)).BeginningOfYear()
 
 	var dayBeforeYesterdayReport *SalesReport
-	var lastWeekReport *SalesReport
+	var threeDaysAgoReport *SalesReport
+	var thisMonthReport *SalesReport
 	var lastMonthReport *SalesReport
-	var lastYearReport *SalesReport
 
 	jwtStr := generateJWT(accessInfo)
 	wg := sync.WaitGroup{}
@@ -43,23 +43,23 @@ func getSalesReports(accessInfo *AppStoreConnectAPIAccessInfo) SalesReports {
 	}()
 	go func() {
 		defer wg.Done()
-		lastWeekReport = getSalesReport(accessInfo.BaseUrl, jwtStr, lastWeek.Format("2006-01-02"), "WEEKLY")
+		threeDaysAgoReport = getSalesReport(accessInfo.BaseUrl, jwtStr, threeDaysAgo.Format("2006-01-02"), "DAILY")
+	}()
+	go func() {
+		defer wg.Done()
+		thisMonthReport = getSalesReport(accessInfo.BaseUrl, jwtStr, thisMonth.Format("2006-01"), "MONTHLY")
 	}()
 	go func() {
 		defer wg.Done()
 		lastMonthReport = getSalesReport(accessInfo.BaseUrl, jwtStr, lastMonth.Format("2006-01"), "MONTHLY")
 	}()
-	go func() {
-		defer wg.Done()
-		lastYearReport = getSalesReport(accessInfo.BaseUrl, jwtStr, lastYear.Format("2006"), "YEARLY")
-	}()
 	wg.Wait()
 
 	return SalesReports{
 		DayBeforeYesterday: *dayBeforeYesterdayReport,
-		LastWeek:           *lastWeekReport,
+		ThreeDaysAgo:       *threeDaysAgoReport,
+		ThisMonth:          *thisMonthReport,
 		LastMonth:          *lastMonthReport,
-		LastYear:           *lastYearReport,
 	}
 }
 
@@ -84,9 +84,9 @@ func salesReportsToProceeds(salesReports *SalesReports, currency string) Proceed
 
 	return Proceeds{
 		DayBeforeYesterday: calcProceeds(&salesReports.DayBeforeYesterday, currency),
-		LastWeek:           calcProceeds(&salesReports.LastWeek, currency),
+		ThreeDaysAgo:       calcProceeds(&salesReports.ThreeDaysAgo, currency),
+		ThisMonth:          calcProceeds(&salesReports.ThisMonth, currency),
 		LastMonth:          calcProceeds(&salesReports.LastMonth, currency),
-		LastYear:           calcProceeds(&salesReports.LastYear, currency),
 	}
 }
 

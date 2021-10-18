@@ -21,16 +21,16 @@ func postSlack(webhookUrl string, proceeds *Proceeds) {
 			Value: formatPrice(proceeds.DayBeforeYesterday),
 			Short: true,
 		}, {
-			Title: "先週",
-			Value: formatPrice(proceeds.LastWeek),
+			Title: "3日前",
+			Value: formatPrice(proceeds.ThreeDaysAgo),
+			Short: true,
+		}, {
+			Title: "今月",
+			Value: formatPrice(proceeds.ThisMonth),
 			Short: true,
 		}, {
 			Title: "先月",
 			Value: formatPrice(proceeds.LastMonth),
-			Short: true,
-		}, {
-			Title: "昨年",
-			Value: formatPrice(proceeds.LastYear),
 			Short: true,
 		},
 	}
